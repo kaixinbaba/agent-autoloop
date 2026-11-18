@@ -1,5 +1,7 @@
 # Agent Autoloop
 
+This is a fork of [KKKKhazix/agent-autoloop](https://github.com/KKKKhazix/agent-autoloop), maintained separately by `kaixinbaba`. Installs and updates follow [this fork's `release` branch](https://github.com/kaixinbaba/agent-autoloop/tree/release); engine changes go through [this repository's Issue → PR process](https://github.com/kaixinbaba/agent-autoloop/issues).
+
 **Let your command-line agents pick up work and follow it through in the background — staying quiet when they can handle it, and sending you a card only when a decision is yours to make.**
 
 [中文](README.md) | **English**
@@ -22,19 +24,30 @@ Most of us use command-line agents like Claude Code or Codex by babysitting a te
 
 Works on Windows, macOS, and Linux. You need Node 24 or newer, Git, and a command-line agent already signed in; macOS/Linux also use curl. No GitHub account required. You can hand the [installation guide](INSTALL.md) to your agent.
 
+For a new installation only: clone this fork's `release` into the target `app` directory before running that copy's installer. Stop if the directory already exists; do not overwrite it or switch its source automatically. Migrating an existing installation needs separate confirmation. See [INSTALL](INSTALL.md#安装) for custom data directories and PowerShell execution policy.
+
 Windows PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/KKKKhazix/agent-autoloop/main/install.ps1 | iex
+$app = Join-Path $env:USERPROFILE '.agent-autoloop\app'
+git clone --branch release --single-branch https://github.com/kaixinbaba/agent-autoloop.git "$app"
+if ($LASTEXITCODE -ne 0) { throw 'Clone failed. Check the target directory; do not overwrite an existing installation.' }
+git -C "$app" remote get-url origin
+git -C "$app" rev-parse --abbrev-ref '@{upstream}'
+& "$app\install.ps1"
 ```
 
 macOS / Linux:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KKKKhazix/agent-autoloop/main/install.sh | sh
+app="$HOME/.agent-autoloop/app"
+git clone --branch release --single-branch https://github.com/kaixinbaba/agent-autoloop.git "$app" &&
+  git -C "$app" remote get-url origin &&
+  git -C "$app" rev-parse --abbrev-ref '@{upstream}' &&
+  sh "$app/install.sh"
 ```
 
-The installer and `agent-autoloop update` both install the newest [release](https://github.com/KKKKhazix/agent-autoloop/releases), which has passed every check.
+The source must be `https://github.com/kaixinbaba/agent-autoloop.git` and the tracking branch `origin/release`. Rerunning the installer and `agent-autoloop update` keep that source and branch, not upstream tags. Merging into `main` does not upgrade installations; changes must be published separately to `release`. The installer is unchanged: downloading a script directly or setting only the repository address does not guarantee this branch.
 
 Then run a real loop with your own agent — ask, exit while it waits, make the call, resume:
 

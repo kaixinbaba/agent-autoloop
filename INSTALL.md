@@ -1,20 +1,29 @@
 # 安装说明（写给 Agent）
 
-用户请你装好 Agent 自动化中台。先安装，再走一遍提问和继续处理；能自己做的直接做。
+用户请你装好 Agent 自动化中台。本 fork 由 `kaixinbaba` 独立维护，新安装和更新跟随[本仓库的 `release` 分支](https://github.com/kaixinbaba/agent-autoloop/tree/release)，不是上游标签或本仓库 `main`。先核对来源，再安装并验证问答；已有安装不自动迁移。
 
 ## 安装
 
 支持原生 Windows、macOS 和 Linux。需要 Node.js 24 或更新、Git，以及一个已经登录的命令行 Agent；macOS/Linux 还需要 curl。Windows 使用系统自带的 PowerShell 5.1、任务计划程序和 Windows Script Host（wscript）。
 
+下面仅用于全新安装。先将 `release` 克隆到安装器实际使用的 `app` 目录；目录已存在或克隆失败就停下，不覆盖、不切分支。若已设置 `AGENT_AUTOLOOP_HOME`，下面的 `$app` 或 `app` 必须改为该目录下的 `app`，不能克隆到一处、安装到另一处。
+
 Windows PowerShell：
 
 ```powershell
-irm https://raw.githubusercontent.com/KKKKhazix/agent-autoloop/main/install.ps1 | iex
+$app = Join-Path $env:USERPROFILE '.agent-autoloop\app'
+git clone --branch release --single-branch https://github.com/kaixinbaba/agent-autoloop.git "$app"
+if ($LASTEXITCODE -ne 0) { throw '克隆失败，请先检查目标目录，不要覆盖已有安装。' }
+git -C "$app" remote get-url origin
+git -C "$app" rev-parse --abbrev-ref '@{upstream}'
+& "$app\install.ps1"
 ```
+
+输出的来源应为 `https://github.com/kaixinbaba/agent-autoloop.git`，跟踪分支应为 `origin/release`；不符时先查原因，不继续安装或更新。
 
 默认安装在 `$env:USERPROFILE\.agent-autoloop`，命令目录加入当前进程及用户 PATH。Windows 10 和 11 都能装，不需要管理员：后台服务是当前账号自己的登录任务。例外是 Windows 自带的 Administrator 账号（开着 UAC 时）：不提权建不了登录任务，提权建出来的任务又会让中台和它派的 Agent 带着完整的管理员权限，所以 `service install` 会拒绝并打印一行 PowerShell，改用「启动」文件夹在登录时以普通权限拉起中台。Windows 服务在本人登录后于后台常驻、不开窗口，退出 10 秒后自动重启，注销后停止；通过 SSH 管理时也可用 `service install`，任务会在 Windows 已登录的会话中运行；Codex 0.167 的原生沙箱在 OpenSSH 会话中会出现 runner pipe-in 超时，本机登录会话正常，见 [Codex 已知问题](https://github.com/openai/codex/issues/37722)。中台起不来、日志里是 `listen EACCES` 时，多半是 Hyper-V、WSL 把端口划进了系统保留范围：`netsh int ipv4 show excludedportrange protocol=tcp` 查看，在 `config.json` 里换一个范围外的端口。CI 或普通命令测试用 `--no-service`，再运行安装器打印的完整命令启动 `up`。桌面通知只在同一登录会话显示。
 
-本地仓库安装示例：
+其他本地仓库的安装示例（仅在用户明确指定该来源时使用，不是本 fork 的默认安装路径）：
 
 ```powershell
 $env:AGENT_AUTOLOOP_REPO = 'C:\code\agent-autoloop'
@@ -32,14 +41,20 @@ WSL2 仍按 Linux 安装；常驻服务需要发行版开启 systemd，没开则
 本仓库已公开，安装脚本和代码都可匿名下载，不需要 GitHub 账号、登录或 GitHub CLI（`gh`）。下面的 macOS/Linux 命令安装并启用登录后常驻服务：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KKKKhazix/agent-autoloop/main/install.sh | sh
+app="$HOME/.agent-autoloop/app"
+git clone --branch release --single-branch https://github.com/kaixinbaba/agent-autoloop.git "$app" &&
+  git -C "$app" remote get-url origin &&
+  git -C "$app" rev-parse --abbrev-ref '@{upstream}' &&
+  sh "$app/install.sh"
 ```
 
 GitHub Issue 轮询和 PR 交付等功能另需已登录的 `gh`，按对应场景说明配置；运行 Agent 也仍需该 Agent 自己的登录或授权。中台在后台启动 Agent，桌面应用里能用的浏览器和电脑操作它不一定用得上（比如 Codex 应用里的 Chrome，后台的 `codex exec` 用不到）；要它操作网页，照[浏览器接入](docs/plugins.md#浏览器接入)配好，再用后台的启动方式实际跑一次。
 
-安装和 `agent-autoloop update` 都装最新的 Release，那是通过了全部检查的版本，`main` 上还没发布的改动要等下一个 Release。
+安装器重跑与 `agent-autoloop update` 会沿用该副本的 `origin` 和跟踪分支，通过快进更新 `release`，不选上游标签。更新前可重跑上面的两条 `git -C` 检查。合入 `main` 只是开发完成，不会自动推进 `release`；本次文档不建立发布自动化，也不升级已经安装的引擎。
 
-用户指定本地仓库时，用该目录的安装脚本，并把 `AGENT_AUTOLOOP_REPO` 设成它的绝对路径。不要下载 GitHub 的旧脚本，也不要用未提交的文件冒充已安装版本；这时安装器克隆的是本地仓库的 HEAD，`update` 也跟着那个仓库走，不看 Release。已经装过时这个变量不起作用，还跟着原来的来源走；要换来源，先运行 `agent-autoloop uninstall` 再装。
+安装器未改：直接下载本 fork 的脚本仍可能选上游；只设置 `AGENT_AUTOLOOP_REPO` 也只会克隆远端默认分支，不保证是 `release`，所以必须先克隆指定分支到目标 `app`。
+
+用户指定其他本地仓库时，用该目录的安装脚本，并把 `AGENT_AUTOLOOP_REPO` 设成它的绝对路径。不要下载 GitHub 的旧脚本，也不要用未提交的文件冒充已安装版本；这时安装器克隆的是本地仓库的 HEAD，后续更新跟随克隆产生的来源与跟踪分支，不选上游标签。已经装过时这个变量不起作用，仍沿用原来的来源。已有安装若要换源，先核实来源、备份和停服影响，另行取得迁移确认；不要直接卸载、改远端或覆盖。
 
 下面以 `/path/to/agent-autoloop` 为例，使用已经登录的 Codex：
 

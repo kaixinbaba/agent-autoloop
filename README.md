@@ -1,5 +1,7 @@
 # Agent Autoloop
 
+本仓库是 [KKKKhazix/agent-autoloop](https://github.com/KKKKhazix/agent-autoloop) 的 fork，由 `kaixinbaba` 分开维护。安装和更新跟随[本 fork 的 `release` 分支](https://github.com/kaixinbaba/agent-autoloop/tree/release)，引擎改动走[本仓库的 Issue → PR 流程](https://github.com/kaixinbaba/agent-autoloop/issues)。
+
 **让你的命令行 Agent 在后台自己接活、自己跟进到底；平时不烦你，遇到拿不准的事才发卡片找你拍板。**
 
 **中文** | [English](README.en.md)
@@ -22,19 +24,30 @@
 
 支持 Windows、macOS 和 Linux。需要 Node 24 或更新、Git，以及一个已经登录的命令行 Agent；macOS/Linux 还需要 curl，不需要 GitHub 账号。也可以把[安装说明](INSTALL.md)交给你的 Agent。
 
+以下仅用于全新安装：先把本 fork 的 `release` 克隆到目标 `app` 目录，再运行该副本的安装器。目录已存在就停下，不覆盖或自动换源；已有安装迁移需另行确认。自定义数据目录和执行策略见[安装说明](INSTALL.md#安装)。
+
 Windows PowerShell：
 
 ```powershell
-irm https://raw.githubusercontent.com/KKKKhazix/agent-autoloop/main/install.ps1 | iex
+$app = Join-Path $env:USERPROFILE '.agent-autoloop\app'
+git clone --branch release --single-branch https://github.com/kaixinbaba/agent-autoloop.git "$app"
+if ($LASTEXITCODE -ne 0) { throw '克隆失败，请先检查目标目录，不要覆盖已有安装。' }
+git -C "$app" remote get-url origin
+git -C "$app" rev-parse --abbrev-ref '@{upstream}'
+& "$app\install.ps1"
 ```
 
 macOS / Linux：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KKKKhazix/agent-autoloop/main/install.sh | sh
+app="$HOME/.agent-autoloop/app"
+git clone --branch release --single-branch https://github.com/kaixinbaba/agent-autoloop.git "$app" &&
+  git -C "$app" remote get-url origin &&
+  git -C "$app" rev-parse --abbrev-ref '@{upstream}' &&
+  sh "$app/install.sh"
 ```
 
-安装和 `agent-autoloop update` 都装最新的 [Release](https://github.com/KKKKhazix/agent-autoloop/releases)，那是通过了全部检查的版本。
+来源应为 `https://github.com/kaixinbaba/agent-autoloop.git`，跟踪分支应为 `origin/release`。安装器重跑和 `agent-autoloop update` 都沿用这个来源与分支，不选上游标签，也不会因合入 `main` 自动升级；改动须另行发布到 `release`。安装器本身未改，直接下载脚本或只设仓库地址不能保证选中此分支。
 
 装好后用你本机的 Agent 真实走一遍“提问 → 退出等回复 → 拍板 → 接着干完”：
 

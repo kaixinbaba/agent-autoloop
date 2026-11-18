@@ -112,6 +112,8 @@ Claude 主任务要委托 Codex 操作网页时，从 `examples/recipes/browser-
 
 ## 交付流水线
 
+以下是通用交付插件的配置示例，不是本 fork 引擎改动的授权入口。本仓库贡献按 [CONTRIBUTING](../../CONTRIBUTING.md)：先 Issue 与计划确认，在独立 worktree 的 `agent/issue-编号` 分支开发，draft PR 到 `main` 并写 `Fixes #编号`；先请求原生只审查，当前成果卡获本人同意后才由中台合并。计划确认不授权上线，不能照下面的标签示例绕过闸门。合并 `main` 也不等于发布到 `release` 或升级安装。
+
 需要这台接单电脑已有 `gh` 登录和审查程序。`delivery` 进程只执行本机插件和 main 指定的审查命令，PR 不检出、不在本机跑代码。先把项目的 `ops/delivery.json` 和审查要点放到 main：
 
 ```json
@@ -236,8 +238,10 @@ MCP 服务不区分调用方，都按本人记录（`answer` 记成本人，`emi
 
 手机要批卡片、别人的 Webhook 要进来时，把中台放到一台有公网的机器上：
 
-1. 服务器上 `sh install.sh --no-service --command true`（这台不跑 Agent，`--command true` 只是占位，第 2 步把 `rules.json` 里的 Agent 换成真的），`config.json` 里 `hub.listen` 用 `127.0.0.1:3350`（要写成 `主机:端口`，IPv6 用 `[地址]:端口`；只写端口或 `:端口` 会被拒绝，避免意外监听所有网卡），`hub.publicUrl` 写公网地址，去掉 `worker`，再 `agent-autoloop service install`。前面放一个做 HTTPS 的反向代理（Caddy、nginx）。
-2. 每台干活的电脑：服务器上 `agent-autoloop key new worker <名字>`，电脑上 `curl -fsSL https://raw.githubusercontent.com/KKKKhazix/agent-autoloop/main/install.sh | sh -s -- join https://中台地址 --worker <名字> --key <密钥>`。`rules.json` 的 Agent 写上对应的 `worker`。
+新安装先按 [INSTALL](../../INSTALL.md#安装)把本 fork 的 `release` 克隆到目标 `app`，核对 `origin` 与 `origin/release`；不要直接运行上游下载命令。已有安装来源不自动切换，换源与迁移另行确认。下面的 `app` 都指该目标目录（默认 Unix 为 `~/.agent-autoloop/app`，Windows 为 `$env:USERPROFILE\.agent-autoloop\app`）；用下面的参数替代 INSTALL 中首次运行安装器的那一步。
+
+1. 服务器上 `sh "$app/install.sh" --no-service --command true`（这台不跑 Agent，`--command true` 只是占位，第 2 步把 `rules.json` 里的 Agent 换成真的），`config.json` 里 `hub.listen` 用 `127.0.0.1:3350`（要写成 `主机:端口`，IPv6 用 `[地址]:端口`；只写端口或 `:端口` 会被拒绝，避免意外监听所有网卡），`hub.publicUrl` 写公网地址，去掉 `worker`，再 `agent-autoloop service install`。前面放一个做 HTTPS 的反向代理（Caddy、nginx）。
+2. 每台干活的电脑：先经用户确认，在服务器上 `agent-autoloop key new worker <名字>`；电脑上 Unix 用 `sh "$app/install.sh" join https://中台地址 --worker <名字> --key <密钥>`，Windows PowerShell 用 `& "$app\install.ps1" join https://中台地址 --worker <名字> --key <密钥>`。保留既有 join 参数，密钥只在本人环境使用，不提交到仓库或消息。`rules.json` 的 Agent 写上对应的 `worker`。
 
 电脑不用开放任何端口，它们自己连过去。
 
